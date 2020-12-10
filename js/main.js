@@ -792,8 +792,14 @@ const loader = new TextureLoader();
 const matCapTexture = loader.load("./assets/matcap-red.jpg");
 const matCapTexture2 = loader.load("./assets/gold.jpg");
 
+function isMobile() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
+}
+
 const params = {
-  sphereDetail: 160,
+  sphereDetail: isMobile() ? 40 : 160,
   voronoiScale: 1.7,
   distortionFactor: -0.07,
   normalDistance: 0.05,
@@ -901,7 +907,10 @@ const backdrop = new Mesh(
 );
 scene.add(backdrop);
 
-const box = new Mesh(new IcosahedronBufferGeometry(1, 160), material);
+const box = new Mesh(
+  new IcosahedronBufferGeometry(1, params.sphereDetail),
+  material
+);
 scene.add(box);
 
 async function init() {
