@@ -26,7 +26,7 @@ renderer.shadowMap.type = PCFSoftShadowMap;
 
 const scene = new Scene();
 const camera = new PerspectiveCamera(60, 1, 0.1, 100);
-camera.position.set(5, 5, 5);
+camera.position.set(2, 2, 2);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.screenSpacePanning = true;
