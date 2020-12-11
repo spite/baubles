@@ -795,7 +795,7 @@ void main() {
 
 const loader = new TextureLoader();
 const matCapTexture = loader.load("./assets/red.jpg");
-const matCapTexture2 = loader.load("./assets/red-matte.jpg");
+const matCapTexture2 = loader.load("./assets/black.jpg");
 
 function isMobile() {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
