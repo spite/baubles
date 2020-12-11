@@ -9,6 +9,7 @@ import {
   BackSide,
   Vector3,
   Vector2,
+  FrontSide,
 } from "../third_party/three.module.js";
 import * as dat from "../third_party/dat.gui.module.js";
 //import { initScene, update } from "../js/scene.js";
@@ -32,7 +33,7 @@ uniform mat4 modelMatrix;
 uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
 
-uniform float voronoiScale;
+uniform vec3 voronoiScale;
 uniform float distortionFactor;
 uniform float normalDistance;
 uniform float noiseDistort;
@@ -40,6 +41,7 @@ uniform float noiseScale;
 uniform float rotateX;
 uniform float rotateY;
 uniform float rotateZ;
+uniform float bulgeFactor;
 
 out vec4 vWorldPosition;
 out vec4 vEyePosition;
@@ -350,8 +352,9 @@ vec4 map(in vec3 pos ){
   //d = pow(d, 2.);
   //d = exp(d);
   //d = sign(d) * sqrt(abs(d));
+  d += noiseDistort*fbm(noiseScale*pos);
   vec3 p = pos + normalize(pos) * d;
-  //p = opTwistY(p,1.);
+  p = rotate(p);
   return vec4(p, value);
 }
 
@@ -515,14 +518,15 @@ float mapPolyhedra (vec3 p, float t) {
   float tetra = sdTetrahedron(p, max(.0001,1.)) - .1;
   float dodeca = fDodecahedron(p, 1., 50.);
   float octa = sdOctahedron(p, 1.25 ) - .1;
-  float a = opSmoothUnion(sphere, dodeca,.4);
+  float a = opSmoothUnion(sphere, dodeca, bulgeFactor);
+  //a = sphere;
   // a = opSmoothUnion(a, octa, smoothness);
   // a = opSmoothUnion(a, icosa, smoothness);
   // a = opSmoothUnion(a, dodeca, smoothness);
   // a = opSmoothUnion(a, sphere, smoothness);
-  a += noiseDistort*fbm(noiseScale*p);
-
   a += distortionFactor * voronoi(voronoiScale*p).x;
+  a += noiseDistort*fbm(noiseScale*p);
+  
   return a;
   
   // //float d = displacement(pp);
@@ -559,7 +563,7 @@ float march (vec3 ro, vec3 rd, float time) {
     float t = 0.0;
     for (int i = 0; i < MAXSTEPS; ++i) {
      	vec3 p = ro + rd * d;
-       	t = mapPolyhedra (p, time);
+       	t = mapPolyhedra(p, time);
         if (t < EPSILON || d >= MAXDIST)
             break;
         d += t;
@@ -570,23 +574,23 @@ float march (vec3 ro, vec3 rd, float time) {
 void main() {
   vUv = uv;
   
-  // vec4 distort = map(position);
-  // vPosition = distort.xyz;
-  // strength = distort.a;
-  // //strength = noise(position*5.);
-  // vec3 t = vec3(0.);
-  // vec3 b = vec3(0.);
-  // vNormal = normalMatrix * calcNormal(position, t, b);
-  // vTangent = normalMatrix * t;
-  // vBinormal = normalMatrix * b;
+  vec4 distort = map(position);
+  vPosition = distort.xyz;
+  strength = distort.a;
+  //strength = noise(position*5.);
+  vec3 t = vec3(0.);
+  vec3 b = vec3(0.);
+  vNormal = normalMatrix * calcNormal(position, t, b);
+  // // vTangent = normalMatrix * t;
+  // // vBinormal = normalMatrix * b;
   
-  vec3 ro = 2.*position;
-  vec3 rd = - normalize( position );
-  float d = march( ro, rd, 0. );
-  vPosition = ro + d * rd;
-  //vNormal = normalMatrix* calcNormal(vPosition, 0.) * -1.;
-  vNormal = normalMatrix* rotate(calcNormal (vPosition, 0.) * -1.);
-  vPosition = rotate(vPosition);
+  // vec3 ro = 2.*position;
+  // vec3 rd = - normalize( position );
+  // float d = march( ro, rd, 0. );
+  // vPosition = ro + d * rd;
+  // //vNormal = normalMatrix* calcNormal(vPosition, 0.) * -1.;
+  // vNormal = normalMatrix* rotate(calcNormal (vPosition, 0.) * -1.);
+  // vPosition = rotate(vPosition);
 
   vWorldPosition = modelMatrix * vec4(vPosition, 1. );
   vEyePosition = viewMatrix * vWorldPosition;
@@ -608,10 +612,12 @@ in vec3 vNormal;
 
 uniform sampler2D matCapMap;
 uniform sampler2D matCapMap2;
+
 uniform float curvatureRim;
 uniform float stripeFrequency;
 uniform float stripeOffset;
 uniform float frostFactor;
+uniform float slopeFactor;
 
 out vec4 color;
 
@@ -679,18 +685,20 @@ float random( vec2  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float random( vec3  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float random( vec4  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 
-float getStripe(in vec2 uv) {
+float getStripe(in vec2 uv, in float afwidth) {
   float v = stripeOffset + sin(uv.x*2.*M_PI + stripeFrequency*uv.y);
   v = .5 + .5 * v;
-  v = smoothstep(.49, .51, v);
+  float e = afwidth;
+  v = smoothstep(.5-e, .5+e, v);
   return v;
 }
 
 float getPattern(in vec2 uv, out float slope) {
-  float v0 = getStripe(uv);
-  float e = .001;
-  float v1 = getStripe(vec2(uv.x, uv.y-e));
-  slope = v0 - v1;
+  float afwidth = length(vec2(dFdx(uv.x), dFdy(uv.y)));
+  float v0 = getStripe(uv, afwidth);
+  float e = .0005;//5.*afwidth;
+  float v1 = getStripe(vec2(uv.x, uv.y-e), afwidth);
+  slope = slopeFactor*(v0 - v1);
   return v0;
 }
 
@@ -701,10 +709,18 @@ vec3 cartesianToSpherical(in vec3 p){
   return vec3(r, (theta + M_PI) / M_TAU, phi / M_TAU); 
 }
 
+vec2 matCapUV(in vec3 eye, in vec3 normal) {
+  vec3 r = reflect(eye, normal);
+  float m = 2.82842712474619 * sqrt(r.z + 1.0);
+  vec2 vN = r.xy / m + .5;
+  return vN;
+}
+
 void main() {
 
   float slope = 0.;
-  float stripe = getPattern(cartesianToSpherical(vPosition).yz, slope);
+  float pattern = getPattern(cartesianToSpherical(vPosition).yz, slope);
+//  float pattern = getPattern(vUv, slope);
 
   // mat3 tbn = mat3(normalize(vTangent), normalize(vBinormal), normalize(vNormal));
   // vec3 n = normalize(tbn * normalize(vec3(0.,0.,1.)));
@@ -717,12 +733,11 @@ void main() {
 
   vec3 n = normalize(vNormal);
 
-  if(stripe>.5) {
+  if(pattern>.5){
     n.x += frostFactor*rand(vPosition.xy);
     n.y += frostFactor*rand(vPosition.yz);
     n.z += frostFactor*rand(vPosition.xy);
     n = normalize(n);
-    //vN += .05 * (random(1000.*vEyePosition.xyz) - .5);
   }
 
   // Compute curvature
@@ -735,30 +750,20 @@ void main() {
   float depth = length(vEyePosition);
   float curvature = abs((cross(xneg, xpos).y - cross(yneg, ypos).x) *50./depth)* curvatureRim;
   
-  vec3 eye = normalize(vEyePosition.xyz);
-  vec3 r = reflect(eye, n);
-  float m = 2. * sqrt( pow( r.x, 2. ) + pow( r.y, 2. ) + pow( r.z + 1., 2. ) );
-  vec2 vN = r.xy / m + .5;
-  float afwidth = length(vec2(dFdx(vUv.x), dFdy(vUv.y)));
+  vec2 vN = matCapUV(normalize(vEyePosition.xyz), n);
+  //float afwidth = length(vec2(dFdx(vPosition.x), dFdy(vPosition.y)));
   vN.y += .1*slope;
 
   vec4 c1 = texture(matCapMap, vN);
   vec4 c2 = texture(matCapMap2, vN);
 
-  // float a = atan(vPosition.z/vPosition.x) * 2.;
-  // float stripe = sin(10.*vPosition.y+a);
-  // stripe = .5 + .5 * stripe;
-  // stripe =smoothstep(.74, .75, stripe);
-  //float stripe = .5 + .5 * sin(vUv.x*2.*M_PI + 80.*vUv.y);
-  //stripe = smoothstep(.84, .85, stripe);
-  float s = aastep(.5, stripe);//stripe;//smoothstep(.49, .51, strength);
-  //s = 1.-smoothstep(0., .35, strength);
-  color.rgb = mix(c1.rgb, c2.rgb, s);//smoothstep(.25, .75, strength));
+  float s = pattern;
+  color.rgb = mix(c1.rgb, c2.rgb, s);
   color.rgb += vec3(curvature);
   //color.rgb = vec3(s);
     
 //  color = vec4(.5 + .5 * normal, 1.);
-  color.a = 1.;
+  color.a = 1.;//pattern + .5;
   //color.rgb = vec3(slope*100., stripe, 0.);
   //color.rgb = vec3(noise(1000.*vPosition.xyz));
 }`;
@@ -789,8 +794,8 @@ void main() {
 }`;
 
 const loader = new TextureLoader();
-const matCapTexture = loader.load("./assets/matcap-red.jpg");
-const matCapTexture2 = loader.load("./assets/gold.jpg");
+const matCapTexture = loader.load("./assets/red.jpg");
+const matCapTexture2 = loader.load("./assets/red-matte.jpg");
 
 function isMobile() {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -798,9 +803,12 @@ function isMobile() {
   );
 }
 
-const params = {
+const defaultParams = {
   sphereDetail: isMobile() ? 40 : 160,
-  voronoiScale: 1.7,
+  bulgeFactor: 0.1,
+  voronoiScaleX: 1.7,
+  voronoiScaleY: 1.7,
+  voronoiScaleZ: 1.7,
   distortionFactor: -0.07,
   normalDistance: 0.05,
   curvatureRim: 1,
@@ -809,22 +817,51 @@ const params = {
   stripeFrequency: 20,
   stripeOffset: 0,
   frostFactor: 0.05,
+  slopeFactor: 1,
   rotateX: 0,
   rotateY: 0,
   rotateZ: 0,
 };
 
+function deserialise() {
+  if (window.location.hash) {
+    try {
+      return JSON.parse(decodeURIComponent(window.location.hash.substr(1)));
+    } catch (e) {}
+  }
+
+  const data = localStorage.getItem("baubles");
+  if (data) {
+    try {
+      return JSON.parse(data);
+    } catch (e) {
+      return {};
+    }
+  }
+  return {};
+}
+
+const params = { ...defaultParams, ...deserialise() };
+
 const material = new RawShaderMaterial({
   uniforms: {
     matCapMap: { value: matCapTexture },
     matCapMap2: { value: matCapTexture2 },
-    voronoiScale: { value: params.voronoiScale },
+    bulgeFactor: { value: params.bulgeFactor },
+    voronoiScale: {
+      value: new Vector3(
+        params.voronoiScaleX,
+        params.voronoiScaleY,
+        params.voronoiScaleZ
+      ),
+    },
     distortionFactor: { value: params.distortionFactor },
     curvatureRim: { value: params.curvatureRim },
     normalDistance: { value: params.normalDistance },
     noiseScale: { value: params.noiseScale },
     noiseDistort: { value: params.noiseDistort },
     frostFactor: { value: params.frostFactor },
+    slopeFactor: { value: params.slopeFactor },
     stripeFrequency: { value: params.stripeFrequency },
     stripeOffset: { value: params.stripeOffset },
     rotateX: { value: params.rotateX },
@@ -838,46 +875,82 @@ const material = new RawShaderMaterial({
   //wireframe: true,
 });
 
+function serialise() {
+  const data = JSON.stringify(params);
+  localStorage.setItem("baubles", data);
+  window.location.hash = encodeURIComponent(data);
+}
+
 const materialFolder = gui.addFolder("material");
 materialFolder.add(params, "sphereDetail", 0, 200, 10).onChange((v) => {
   box.geometry = new IcosahedronBufferGeometry(1, v);
 });
-materialFolder
-  .add(params, "voronoiScale", 0, 10, 0.01)
-  .onChange((v) => (material.uniforms.voronoiScale.value = v));
-materialFolder
-  .add(params, "distortionFactor", -1, 1, 0.01)
-  .onChange((v) => (material.uniforms.distortionFactor.value = v));
-materialFolder
-  .add(params, "noiseScale", 0, 10, 0.01)
-  .onChange((v) => (material.uniforms.noiseScale.value = v));
-materialFolder
-  .add(params, "noiseDistort", -1, 1, 0.01)
-  .onChange((v) => (material.uniforms.noiseDistort.value = v));
+materialFolder.add(params, "bulgeFactor", 0, 4, 0.01).onChange((v) => {
+  material.uniforms.bulgeFactor.value = v;
+  serialise();
+});
+materialFolder.add(params, "voronoiScaleX", 0, 10, 0.01).onChange((v) => {
+  material.uniforms.voronoiScale.value.x = v;
+  serialise();
+});
+materialFolder.add(params, "voronoiScaleY", 0, 10, 0.01).onChange((v) => {
+  material.uniforms.voronoiScale.value.y = v;
+  serialise();
+});
+materialFolder.add(params, "voronoiScaleZ", 0, 10, 0.01).onChange((v) => {
+  material.uniforms.voronoiScale.value.z = v;
+  serialise();
+});
+materialFolder.add(params, "distortionFactor", -1, 1, 0.01).onChange((v) => {
+  material.uniforms.distortionFactor.value = v;
+  serialise();
+});
+materialFolder.add(params, "noiseScale", 0, 10, 0.01).onChange((v) => {
+  material.uniforms.noiseScale.value = v;
+  serialise();
+});
+materialFolder.add(params, "noiseDistort", -1, 1, 0.01).onChange((v) => {
+  material.uniforms.noiseDistort.value = v;
+  serialise();
+});
 materialFolder
   .add(params, "normalDistance", 0.001, 0.1, 0.001)
-  .onChange((v) => (material.uniforms.normalDistance.value = v));
-materialFolder
-  .add(params, "curvatureRim", 0, 4, 0.01)
-  .onChange((v) => (material.uniforms.curvatureRim.value = v));
-materialFolder
-  .add(params, "stripeFrequency", 0, 200, 1)
-  .onChange((v) => (material.uniforms.stripeFrequency.value = v));
-materialFolder
-  .add(params, "stripeOffset", -1, 1, 0.01)
-  .onChange((v) => (material.uniforms.stripeOffset.value = v));
-materialFolder
-  .add(params, "frostFactor", 0, 0.1, 0.01)
-  .onChange((v) => (material.uniforms.frostFactor.value = v));
-materialFolder
-  .add(params, "rotateX", 0, 2 * Math.PI, 0.01)
-  .onChange((v) => (material.uniforms.rotateX.value = v));
-materialFolder
-  .add(params, "rotateY", 0, 2 * Math.PI, 0.01)
-  .onChange((v) => (material.uniforms.rotateY.value = v));
-materialFolder
-  .add(params, "rotateZ", 0, 2 * Math.PI, 0.01)
-  .onChange((v) => (material.uniforms.rotateZ.value = v));
+  .onChange((v) => {
+    material.uniforms.normalDistance.value = v;
+    serialise();
+  });
+materialFolder.add(params, "curvatureRim", 0, 4, 0.01).onChange((v) => {
+  material.uniforms.curvatureRim.value = v;
+  serialise();
+});
+materialFolder.add(params, "stripeFrequency", 0, 200, 1).onChange((v) => {
+  material.uniforms.stripeFrequency.value = v;
+  serialise();
+});
+materialFolder.add(params, "stripeOffset", -1.1, 1.1, 0.01).onChange((v) => {
+  material.uniforms.stripeOffset.value = v;
+  serialise();
+});
+materialFolder.add(params, "frostFactor", 0, 0.1, 0.01).onChange((v) => {
+  material.uniforms.frostFactor.value = v;
+  serialise();
+});
+materialFolder.add(params, "slopeFactor", -5, 5, 0.01).onChange((v) => {
+  material.uniforms.slopeFactor.value = v;
+  serialise();
+});
+materialFolder.add(params, "rotateX", 0, 2 * Math.PI, 0.01).onChange((v) => {
+  material.uniforms.rotateX.value = v;
+  serialise();
+});
+materialFolder.add(params, "rotateY", 0, 2 * Math.PI, 0.01).onChange((v) => {
+  material.uniforms.rotateY.value = v;
+  serialise();
+});
+materialFolder.add(params, "rotateZ", 0, 2 * Math.PI, 0.01).onChange((v) => {
+  material.uniforms.rotateZ.value = v;
+  serialise();
+});
 let active = true;
 window.addEventListener("keydown", (e) => {
   if (e.key === " ") {
@@ -888,6 +961,16 @@ window.addEventListener("keydown", (e) => {
 function render() {
   if (active) {
     obj.group.rotation.y = performance.now() / 1000;
+    // material.side = BackSide;
+    // renderer.render(scene, camera);
+    // renderer.autoClear = false;
+    // box.scale.setScalar(0.99);
+    // renderer.render(scene, camera);
+    // material.side = FrontSide;
+    // renderer.render(scene, camera);
+    // box.scale.setScalar(1);
+    // renderer.render(scene, camera);
+    // renderer.autoClear = true;
     renderer.render(scene, camera);
     renderer.setAnimationLoop(render);
   }
