@@ -21,7 +21,7 @@ renderer.setClearColor(0, 1);
 
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = PCFSoftShadowMap;
-//renderer.outputEncoding = sRGBEncoding;
+renderer.outputEncoding = sRGBEncoding;
 //renderer.gammaFactor = 2.2;
 
 const scene = new Scene();
