@@ -27,6 +27,13 @@ class SelectController extends Controller {
     v = this.input.value;
     this.relay(v);
   }
+
+  randomize() {
+    this.input.selectedIndex = Math.floor(
+      Math.random() * this.input.options.length
+    );
+    this.setValue(this.input.options[this.input.selectedIndex].value);
+  }
 }
 
 export { SelectController };

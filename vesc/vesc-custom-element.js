@@ -10,11 +10,15 @@ class VescElement extends HTMLElement {
     div.container {
       max-height: 100vh;
       overflow: auto;
+      padding: 2px;
+      border-top: 1px solid #aaa;
+      border-left: 1px solid #aaa;
+      border-bottom: 1px solid #404040;
     }
     div.container p{padding: var(--padding); font-weight: bold; border-bottom: 1px solid #222; cursor: pointer; }
     div.controller {display: flex; flex-direction: row; align-items: center; border-bottom: 1px solid #101010; }
     div.controller * {color: #eee;}
-    div.controller span.strip{ flex: 0 0 var(--padding); background-color: red; height: var(--height);}
+    div.controller span.strip, div.container span.strip{ flex: 0 0 var(--padding); background-color: red; height: var(--height);}
     div.controller span.label{ height: var(--height); padding: 2px var(--padding); flex: 0 0 100px;  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
     div.controller input[type=range], div.controller input[type=button]{flex: 1 1 100%; width: 100%; }
     div.controller input[type=number], 

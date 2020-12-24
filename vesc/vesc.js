@@ -72,6 +72,16 @@ class Vesc {
     this.proxies.set(o, proxy);
     return proxy;
   }
+
+  randomize(fields) {
+    for (const handler of this.handlers) {
+      for (const entry of handler[1]) {
+        if (fields.indexOf(entry.prop) !== -1) {
+          entry.controller.randomize();
+        }
+      }
+    }
+  }
 }
 
 export { Vesc };

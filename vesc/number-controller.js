@@ -28,6 +28,14 @@ class NumberController extends Controller {
     this.valueInput.value = v;
     this.relay(v);
   }
+
+  randomize() {
+    this.setValue(
+      parseFloat(this.input.min) +
+        Math.random() *
+          (parseFloat(this.input.max) - parseFloat(this.input.min))
+    );
+  }
 }
 
 export { NumberController };

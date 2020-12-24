@@ -38,6 +38,10 @@ class Controller {
     this.value = v;
   }
 
+  randomize() {
+    // noop
+  }
+
   relay(v) {
     this.value = v;
     if (this.onChangeFn) {

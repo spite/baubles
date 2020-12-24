@@ -9,6 +9,9 @@ import { OrbitControls } from "../third_party/OrbitControls.js";
 
 const canvas = document.querySelector("canvas");
 
+canvas.addEventListener("webglcontextlost", (e) => {
+  debugger;
+});
 const renderer = new WebGLRenderer({
   antialias: true,
   alpha: true,

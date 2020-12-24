@@ -8,13 +8,18 @@ import { SelectController } from "./select-controller.js";
 class Container {
   constructor(parent, title = "") {
     this.controllers = [];
+    this.containers = [];
     this.state = null;
     this.parent = parent;
     this.div = document.createElement("div");
     this.div.className = "container";
     this.container = document.createElement("div");
-    this.visible = true;
+    this.visible = false;
+    this.container.style.display = "none";
     if (title) {
+      // this.strip = document.createElement("span");
+      // this.strip.className = "strip";
+      // this.div.append(this.strip);
       this.title = document.createElement("p");
       this.title.textContent = title;
       this.div.append(this.title);
@@ -89,6 +94,13 @@ class Container {
     this.parent.register(state, prop, controller);
     this.container.append(controller.div);
     return controller;
+  }
+
+  addFolder(title) {
+    const container = new Container(this.parent, title);
+    this.containers.push(container);
+    this.container.append(container.div);
+    return container;
   }
 }
 
