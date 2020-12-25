@@ -29,6 +29,9 @@ class SelectController extends Controller {
   }
 
   randomize() {
+    this.input.selectedIndex = Math.floor(
+      Math.random() * this.input.options.length
+    );
     this.state[this.prop] = this.input.options[this.input.selectedIndex].value;
   }
 }
