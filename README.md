@@ -1,4 +1,7 @@
 # Generative baubles
+
+http://spite.github.io/baubles
+
 Current limitations:
 - some smoothness values generate degenerate meshes
 - high mesh complexity breaks Android
