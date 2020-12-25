@@ -1,5 +1,13 @@
+import { debounce } from "./debounce.js";
+
 class Controller {
-  constructor(control, label) {
+  constructor(state, prop, control, label) {
+    this.debouncedOnChange = (v) => {
+      this.onChangeFn(v);
+    };
+    this.state = state;
+    this.prop = prop;
+
     this.div = document.createElement("div");
     this.div.className = "controller";
     this.label = document.createElement("span");
@@ -45,14 +53,15 @@ class Controller {
   relay(v) {
     this.value = v;
     if (this.onChangeFn) {
-      if (this.relayRequested) {
-        return;
-      }
-      this.relayRequested = true;
-      requestAnimationFrame(() => {
-        this.onChangeFn(this.value);
-        this.relayRequested = false;
-      });
+      this.debouncedOnChange(this.value);
+      // if (this.relayRequested) {
+      //   return;
+      // }
+      // this.relayRequested = true;
+      // requestAnimationFrame(() => {
+      //   this.onChangeFn(this.value);
+      //   this.relayRequested = false;
+      // });
     }
   }
 }

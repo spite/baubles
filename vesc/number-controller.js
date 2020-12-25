@@ -7,7 +7,7 @@ class NumberController extends Controller {
     input.min = min;
     input.max = max;
     input.step = step;
-    super(input, prop);
+    super(state, prop, input, prop);
     this.valueInput = document.createElement("input");
     input.addEventListener("input", (e) => {
       const v = parseFloat(e.target.value);
@@ -30,11 +30,14 @@ class NumberController extends Controller {
   }
 
   randomize() {
-    this.setValue(
+    // this.setValue(
+    //   parseFloat(this.input.min) +
+    //     Math.random() *
+    //       (parseFloat(this.input.max) - parseFloat(this.input.min))
+    // );
+    this.state[this.prop] =
       parseFloat(this.input.min) +
-        Math.random() *
-          (parseFloat(this.input.max) - parseFloat(this.input.min))
-    );
+      Math.random() * (parseFloat(this.input.max) - parseFloat(this.input.min));
   }
 }
 

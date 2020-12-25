@@ -8,7 +8,7 @@ class ButtonController extends Controller {
     input.addEventListener("click", (e) => {
       fn();
     });
-    super(input, "");
+    super(state, prop, input, prop);
     this.input = input;
   }
 

@@ -9,10 +9,9 @@
     />
     <link rel="preconnect" href="https://fonts.gstatic.com" />
     <link
-      href="https://fonts.googleapis.com/css2?family=Raleway:wght@900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Yesteryear&display=swap"
       rel="stylesheet"
     />
-
     <style>
       * {
         box-sizing: border-box;
@@ -34,14 +33,49 @@
         right: 10px;
       }
       #info {
+        background: #ed213a; /* fallback for old browsers */
+        background: -webkit-linear-gradient(
+          to top,
+          #93291e,
+          #ed213a
+        ); /* Chrome 10-25, Safari 5.1-6 */
+        background: linear-gradient(
+          to top,
+          #93291e,
+          #ed213a
+        ); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
+
+        display: flex;
+        flex-direction: column;
         position: absolute;
-        left: 10px;
-        top: 10px;
-        font-family: "Raleway", sans-serif;
-        font-size: 2.5vw;
+        left: 0;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        font-family: "Yesteryear", sans-serif;
+        font-size: min(5vw, 10vh);
         line-height: 1.4em;
         color: white;
         text-shadow: 0 0 10px black;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 500ms ease-out;
+        pointer-events: none;
+      }
+      #info * {
+        font-weight: 100;
+      }
+      #info h1 {
+        margin-top: 0.4em;
+        margin-bottom: 1em;
+        font-size: 3em;
+      }
+      #info p {
+        font-size: 0.8em;
+      }
+      .hidden {
+        opacity: 0;
+        pointer-events: auto;
       }
     </style>
   </head>
@@ -50,6 +84,7 @@
     <div id="info">
       <h2>Generative</h2>
       <h1>Baubles</h1>
+      <p>Initialising shaders...</p>
     </div>
   </body>
   <script type="module" src="./js/main.js"></script>

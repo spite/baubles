@@ -20,7 +20,7 @@ class FileController extends Controller {
       },
       false
     );
-    super(input, prop);
+    super(state, prop, input, prop);
     this.input = input;
   }
 }

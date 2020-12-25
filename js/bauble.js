@@ -8,11 +8,9 @@ import {
   DataTexture,
   BufferAttribute,
   Vector3,
-  LinearFilter,
-  Loader,
   TextureLoader,
+  Color,
 } from "../third_party/three.module.js";
-import { getFBO } from "./FBO.js";
 import Maf from "../third_party/Maf.js";
 import { ShaderPass } from "./ShaderPass.js";
 import { shader as sdf } from "../shaders/sdf.js";
@@ -73,7 +71,9 @@ precision highp float;
 
 uniform sampler2D matCapMap;
 uniform sampler2D matCapMap2;
+uniform bool useHue1;
 uniform vec3 color1;
+uniform bool useHue2;
 uniform vec3 color2;
 
 uniform float curvatureRim;
@@ -153,6 +153,48 @@ vec2 matCapUV(in vec3 eye, in vec3 normal) {
   return vN;
 }
 
+vec3 rgb2hsl( in vec3 c ) {
+  float h = 0.0;
+	float s = 0.0;
+	float l = 0.0;
+	float r = c.r;
+	float g = c.g;
+	float b = c.b;
+	float cMin = min( r, min( g, b ) );
+	float cMax = max( r, max( g, b ) );
+	l = ( cMax + cMin ) / 2.0;
+	if ( cMax > cMin ) {
+		float cDelta = cMax - cMin;
+        
+        //s = l < .05 ? cDelta / ( cMax + cMin ) : cDelta / ( 2.0 - ( cMax + cMin ) ); Original
+		s = l < .0 ? cDelta / ( cMax + cMin ) : cDelta / ( 2.0 - ( cMax + cMin ) );
+        
+		if ( r == cMax ) {
+			h = ( g - b ) / cDelta;
+		} else if ( g == cMax ) {
+			h = 2.0 + ( b - r ) / cDelta;
+		} else {
+			h = 4.0 + ( r - g ) / cDelta;
+		}
+		if ( h < 0.0) {
+			h += 6.0;
+		}
+		h = h / 6.0;
+	}
+	return vec3( h, s, l );
+}
+
+vec3 hsl2rgb( in vec3 c ) {
+  vec3 rgb = clamp( abs(mod(c.x*6.0+vec3(0.0,4.0,2.0),6.0)-3.0)-1.0, 0.0, 1.0 );
+  return c.z + c.y * (rgb-0.5)*(1.0-abs(2.0*c.z-1.0));
+}
+
+vec3 blendHue(vec3 base, vec3 blend) {
+  vec3 baseHSL = rgb2hsl(base);
+  vec3 blendHSL = rgb2hsl(blend);
+  return hsl2rgb(vec3(blendHSL.r, blendHSL.g > 0.0 ? baseHSL.g : 0.0, baseHSL.b));
+}
+
 void main() {
   float fw = fwidth(vEyePosition.xy).x;
 
@@ -184,6 +226,14 @@ void main() {
   vec4 c1 = texture(matCapMap, vN);
   vec4 c2 = texture(matCapMap2, vN);
 
+  if(useHue1){
+    c1.rgb = blendHue(c1.rgb, color1);
+  }
+
+  if(useHue2){
+    c2.rgb = blendHue(c2.rgb, color2);
+  }
+  
   color = vec4(0.,0.,0.,1.);
   color = mix(c1, c2, pattern);
   color.rgb += vec3(curvature);
@@ -238,7 +288,6 @@ ${fbm}
 
 ${sdf}
 
-${curl}
 
 float poly(in vec3 pos) {
   vec3 p = pos;
@@ -289,9 +338,9 @@ vec3 getPos(in vec3 pos, out float disturb) {
   vec3 dir = -normalize(pos);
   float d = march(ro, dir, disturb);
   vec3 newPos = ro + d * dir;
-  for(int i=0; i<curlIterations; i++){
-    newPos += .1*curlFactor*(curlNoise(curlScale*newPos));
-  }
+  //for(int i=0; i<curlIterations; i++){
+  //newPos += .1*curlFactor*(curlNoise(curlScale*newPos));
+  //}
   disturb = displacement(newPos);
   newPos += disturb * dir;
   return rotate(newPos);
@@ -389,9 +438,13 @@ class Bauble extends Mesh {
         // strip 1
         matCapMap: { value: loader.load("./assets/red.jpg") },
         frostFactor: { value: 0 },
+        useHue1: { value: false },
+        color1: { value: new Color() },
         // strip 2
         matCapMap2: { value: loader.load("./assets/black.jpg") },
         frostFactor2: { value: 0 },
+        useHue2: { value: false },
+        color2: { value: new Color() },
       },
       vertexShader: baubleVS,
       fragmentShader: baubleFS,
@@ -696,6 +749,22 @@ class Bauble extends Mesh {
 
   set matCapMap2(v) {
     this.material.uniforms.matCapMap2.value = v;
+  }
+
+  set color1(v) {
+    this.material.uniforms.color1.value.set(v);
+  }
+
+  set color2(v) {
+    this.material.uniforms.color2.value.set(v);
+  }
+
+  set useHue1(v) {
+    this.material.uniforms.useHue1.value = v;
+  }
+
+  set useHue2(v) {
+    this.material.uniforms.useHue2.value = v;
   }
 
   set sphereDetail(v) {

@@ -2,6 +2,7 @@
 
 import { VescElement } from "./vesc-custom-element.js";
 import { Container } from "./container.js";
+import { debounce } from "./debounce.js";
 
 // number
 // boolean
@@ -17,6 +18,10 @@ import { Container } from "./container.js";
 
 class Vesc {
   constructor() {
+    this.debouncedOnPostChange = debounce(() => {
+      this.onPostChange();
+    });
+    this.onPostChange = () => {};
     this.containers = [];
     this.handlers = new Map();
     this.proxies = new Map();
@@ -52,6 +57,12 @@ class Vesc {
         handler.controller.setValue(value);
       }
     }
+    this.debouncedOnPostChange();
+  }
+
+  onChange(fn) {
+    this.onPostChange = fn;
+    return this;
   }
 
   createProxy(obj) {

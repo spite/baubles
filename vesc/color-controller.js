@@ -4,7 +4,7 @@ class ColorController extends Controller {
   constructor(state, prop, min, max, step) {
     const input = document.createElement("input");
     input.type = "color";
-    super(input, prop);
+    super(state, prop, input, prop);
     this.valueInput = document.createElement("input");
     this.valueInput.type = "text";
     input.addEventListener("input", (e) => {

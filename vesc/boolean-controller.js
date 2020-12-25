@@ -9,7 +9,7 @@ class BooleanController extends Controller {
       state[prop] = v;
       this.relay(v);
     });
-    super(input, prop);
+    super(state, prop, input, prop);
     this.input = input;
   }
 
@@ -17,6 +17,10 @@ class BooleanController extends Controller {
     this.input.checked = v;
     v = this.input.checked;
     this.relay(v);
+  }
+
+  randomize() {
+    this.state[this.prop] = Math.random() > 0.5;
   }
 }
 

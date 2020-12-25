@@ -14,7 +14,7 @@ class SelectController extends Controller {
       }
       input.append(o);
     }
-    super(input, prop);
+    super(state, prop, input, prop);
     input.addEventListener("input", (e) => {
       const v = e.target.value;
       state[prop] = v;
@@ -29,10 +29,7 @@ class SelectController extends Controller {
   }
 
   randomize() {
-    this.input.selectedIndex = Math.floor(
-      Math.random() * this.input.options.length
-    );
-    this.setValue(this.input.options[this.input.selectedIndex].value);
+    this.state[this.prop] = this.input.options[this.input.selectedIndex].value;
   }
 }
 

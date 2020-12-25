@@ -105,6 +105,9 @@ void main() {
 
 const loader = new TextureLoader();
 
+const bauble = new Bauble(renderer);
+scene.add(bauble);
+
 function isMobile() {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
     navigator.userAgent
@@ -114,7 +117,7 @@ function isMobile() {
 //renderer.domElement.style.display = "none";
 
 const defaultParams = {
-  sphereDetail: isMobile() ? 40 : 40,
+  sphereDetail: 80,
   tetrahedronFactor: 0,
   octahedronFactor: 0,
   icosahedronFactor: 0,
@@ -129,7 +132,7 @@ const defaultParams = {
   voronoiStrength: -0.035,
   curlScale: 1,
   curlFactor: 1,
-  curlIterations: 10,
+  curlIterations: 0,
   normalDistance: 0.05,
   curvatureRim: 1,
   noiseScale: 1.78,
@@ -147,7 +150,9 @@ const defaultParams = {
   pattern: 2,
   matcap1: "Black",
   matcap2: "Red",
+  useHue1: false,
   color1: "#b70000",
+  useHue2: false,
   color2: "#b70000",
 };
 
@@ -169,6 +174,12 @@ function deserialise() {
   return {};
 }
 
+function serialise(state) {
+  const data = JSON.stringify(state);
+  localStorage.setItem("baubles", data);
+  window.location.hash = encodeURIComponent(data);
+}
+
 const matcaps = {
   Black: "black.jpg",
   "Black matte": "black-matte.jpg",
@@ -181,6 +192,9 @@ const matcaps = {
 
 const vesc = new Vesc();
 const state = vesc.createProxy({ ...defaultParams, ...deserialise() });
+vesc.onChange(() => {
+  serialise(state);
+});
 const stateMat = vesc.createProxy({
   matcapFile: null,
   matcap2File2: null,
@@ -218,6 +232,8 @@ const stateMat = vesc.createProxy({
       "stripeOffset",
       "frostFactor",
       "frostFactor2",
+      //"slopeWidth",
+      "slopeFactor",
       "pattern",
       "matcap1",
       "matcap2",
@@ -229,7 +245,7 @@ const geometryFolder = materialFolder.addFolder("Geometry");
 geometryFolder
   .add(state, "sphereDetail", 0, 200, 10)
   .onChange((v) => {
-    bauble.sphereDetail = v;
+    bauble.sphereDetail = isMobile() ? v / 4 : v;
   })
   .setText("Sphere detail")
   .setDescription(
@@ -358,6 +374,7 @@ voronoiFolder
 // CURL
 
 const curlFolder = surfaceFolder.addFolder("Curl");
+curlFolder.add("WARNING: Use at your own risk!");
 curlFolder
   .add(state, "curlScale", 0, 10, 0.01)
   .onChange((v) => {
@@ -473,9 +490,17 @@ stripeFolder2
   .setText("Material");
 
 stripeFolder1
+  .add(state, "useHue1")
+  .setText("Use hue")
+  .onChange((v) => (bauble.useHue1 = v));
+stripeFolder1
   .addColor(state, "color1")
   .setText("Color")
   .onChange((v) => (bauble.color1 = v));
+stripeFolder2
+  .add(state, "useHue2")
+  .setText("Use hue")
+  .onChange((v) => (bauble.useHue2 = v));
 stripeFolder2
   .addColor(state, "color2")
   .setText("Color")
@@ -507,12 +532,6 @@ actionsFolder.add(state, "wireframe").onChange((v) => {
 
 window.state = state;
 
-function serialise() {
-  const data = JSON.stringify(state);
-  localStorage.setItem("baubles", data);
-  window.location.hash = encodeURIComponent(data);
-}
-
 let active = true;
 window.addEventListener("keydown", (e) => {
   if (e.key === " ") {
@@ -542,15 +561,13 @@ const backdrop = new Mesh(
 );
 scene.add(backdrop);
 
-const bauble = new Bauble(renderer);
-scene.add(bauble);
-
 async function init() {
   //obj.init(material);
   //scene.add(obj.group);
   //const controllers = await initScene(scene, material, gui);
   resize();
   render();
+  document.querySelector("#info").className = "hidden";
 }
 
 onResize(() => {
@@ -561,4 +578,4 @@ onResize(() => {
   //post.setSize(width * dPR, height * dPR);
 });
 
-init();
+window.addEventListener("load", () => init());
